@@ -35,17 +35,17 @@ bool parse_http_request(const string& http_request, http_header* result)
 
     // http规定的换行方式是CRLF，即\r\n
     // windows下的换行标志是CRLF, UXIX下是\n，因此为了兼容不同平台，
-    // 都以\n作为换行标志
+    // 都以\n作为换行标志来处理
     string lf("\n"); 
     size_t prev = 0, next = 0;
 
     // 此处开始解析http_request
     if ((next = http_request.find(lf, prev)) != string::npos)
     {
+        string first_line(http_request.substr(prev, next - prev));
         prev = next + 1; // 下一行起始位置
         if (string(http_request, next -1, 1) == "\r")
             --next;
-        string first_line(http_request.substr(prev, next - prev));
         std::stringstream string_stream(first_line);
         string_stream >> (result->method);
         string_stream >> (result->url);
@@ -54,7 +54,7 @@ bool parse_http_request(const string& http_request, http_header* result)
     else
     {
         perror("parse_http_request error: http_request has"
-               "not \n");
+               " not \\n");
         return false;
     }
 
@@ -65,12 +65,12 @@ bool parse_http_request(const string& http_request, http_header* result)
     if (pos_lf2 == string::npos && pos_crlf2 == string::npos)
     {
         perror("parse_http_request error: http_request has" 
-                "not \r\n\r\n or \n\n");
+                " not \\r\\n\\r\\n or \\n\\n");
         return false;
     }
 
     // 解析header
-    size_t pos = ((pos_lf2 != string::npos) ? pos_lf2 : pos_crlf2);
+    size_t pos = ((pos_lf2 == string::npos) ? pos_crlf2 : pos_lf2);
     string buff, key, value;
     while(1)
     {
@@ -89,7 +89,7 @@ bool parse_http_request(const string& http_request, http_header* result)
                 ;
             key = buff.substr(beg, end - beg);
 
-            for (; (!std::isalpha(buff[end]) && !std::isdigit(buff[end])); ++end)
+            for (; !std::isalnum(buff[end]); ++end)
                 ;
             beg = end;
             for (; next != end; ++end)
@@ -97,9 +97,17 @@ bool parse_http_request(const string& http_request, http_header* result)
             value = buff.substr(beg, end - beg);
             result->header.insert(std::make_pair(key, value));
 
-            prev = next;
+            prev = next + 1;
         }
         else
+        {
             break;
+        }
     }
+
+    // 解析请求包的实体（一般不存在）
+    size_t tmp = (pos_lf2 == string::npos ? 4 : 2);
+    result->body = http_request.substr(pos + tmp, http_request.size() - pos - tmp);
+
+    return true;
 }
