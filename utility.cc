@@ -11,7 +11,7 @@ std::map<string, int> config_keyword_map;
 
 // 返回GMT时间，如：Sat, 20 Jan 2018 07:29:15 GMT
 // 参见APUE 6.10
-string time_gmt()
+string gmt_time()
 {
 	time_t now;
 	struct tm *time_now;
@@ -97,7 +97,7 @@ string time_gmt()
 }
 
 // 返回真正的url
-string real_url(const string& url)
+string get_real_url(const string& url)
 {
     string real_url, url2;
     int n = 0;
@@ -233,7 +233,7 @@ void set_reuse_addr(int sockfd)
 }
 
 // 关闭nagle
-void set_off_nagle(int sockfd)
+void set_off_tcp_nagle(int sockfd)
 {
     int on = 1;
     int ret = setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, &on, sizeof(on));
@@ -245,7 +245,7 @@ void set_off_nagle(int sockfd)
 }
 
 // 开启nagle
-void set_on_nagle(int sockfd)
+void set_on_tcp_nagle(int sockfd)
 {
  	int off = 0;
  	int ret = setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, &off, sizeof(off));
