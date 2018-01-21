@@ -225,7 +225,7 @@ void set_reuse_addr(int sockfd)
 {
     int on = 1;
     int ret = setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
-    if (ret = -1)
+    if (ret == -1)
     {
         perror("setsockopt: SO_REUSEADDR");
         exit(-1);
@@ -249,7 +249,7 @@ void set_on_tcp_nagle(int sockfd)
 {
  	int off = 0;
  	int ret = setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, &off, sizeof(off));
- 	if(ret == -1)
+ 	if (ret == -1)
  	{
  		perror("setsockopt: TCP_NODELAY OFF");
 		exit(-1);
@@ -261,7 +261,7 @@ void set_on_tcp_cork(int sockfd)
 {
  	int on = 1;
  	int ret = setsockopt(sockfd, SOL_TCP, TCP_CORK, &on, sizeof(on));
- 	if(ret == -1)
+ 	if (ret == -1)
  	{
  		perror("setsockopt: TCP_CORK ON");
 		exit(-1);
@@ -273,7 +273,7 @@ void set_off_tcp_cork(int sockfd)
 {
  	int off = 0;
  	int ret = setsockopt(sockfd, SOL_TCP, TCP_CORK, &off, sizeof(off));
- 	if(ret == -1)
+ 	if (ret == -1)
  	{
  		perror("setsockopt: TCP_CORK OFF");
 		exit(-1);
@@ -286,7 +286,7 @@ void set_recv_timeo(int sockfd, int sec, int msec)
 {
  	struct timeval time= {sec, msec};
  	int ret = setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &time, sizeof(time));
- 	if(ret == -1)
+ 	if (ret == -1)
  	{
  		perror("setsockopt: SO_RCVTIMEO");
 		exit(-1);
@@ -298,7 +298,7 @@ void set_send_timeo(int sockfd, int sec, int msec)
 {
  	struct timeval time= {sec, msec};
  	int ret = setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, &time, sizeof(time));
- 	if(ret == -1)
+ 	if (ret == -1)
  	{
  		perror("setsockopt: SO_SNDTIMEO");
 		exit(-1);
@@ -309,7 +309,7 @@ void set_send_timeo(int sockfd, int sec, int msec)
 int my_socket(int domain, int type, int protocol)
 {
 	int listen_fd;
-	if((listen_fd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
+	if ((listen_fd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
 	{
 		perror("socket");
 		exit(-1);
@@ -319,7 +319,7 @@ int my_socket(int domain, int type, int protocol)
 
 void my_bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
 {
-	if(bind(sockfd, addr, addrlen) == -1)
+	if (bind(sockfd, addr, addrlen) == -1)
 	{
 		perror("bind");
 		exit(-1);
@@ -328,7 +328,7 @@ void my_bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
 
 void my_listen(int sockfd, int backlog)
 {
-	if(listen(sockfd, backlog) == -1)
+	if (listen(sockfd, backlog) == -1)
 	{
 		perror("listen");
 		exit(-1);
