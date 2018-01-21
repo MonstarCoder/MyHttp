@@ -119,7 +119,7 @@ int main(int argc, char**argv)
                 set_nonblock(connfd);
                 // 设置读事件和ET模式
                 ev.events = EPOLLIN | EPOLLET;
-                ev.data.fd == connfd;
+                ev.data.fd = connfd;
                 // 将监听事件加入epoll中
                 my_epoll_ctl(epollfd, EPOLL_CTL_ADD, connfd, &ev);
             }
