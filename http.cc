@@ -1,5 +1,10 @@
 #include "http.h"
 
+// 设置http请求包大小
+#define ONEKILO 1024
+#define ONEMEGA 1024 * ONEKILO
+#define ONEGIGA 1024 * ONEMEGA
+
 // 处理客户端链接的线程例程
 void* thread_func(void* param);
 
@@ -8,13 +13,19 @@ int32_t thread_num = 0;
 pthread_mutex_t thread_num_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 // thread_num原子加１
-inline void thread_add1();
+inline void thread_num_add1();
 
 // thread_num原子减１
-inline void thread_minus1();
+inline void thread_num_minus1();
 
 // thread_num原子读
 int32_t thread_num_read();
+
+// thread_func辅助处理函数
+void* thread_func_aux(HttpHeader* hh, EpollfdConnfd* ptr_epollfd_connfd);
+
+// 清除函数
+void clear(int confd, HttpHeader* buf);
 
 // HttpHeader处理函数，根据解析下来的HttpHeader来处理客户的请求
 // result保存了处理结果，即http响应包
@@ -84,7 +95,7 @@ int main(int argc, char**argv)
     int nfds;
     socklen_t addrlen;
     pthread_t tid;
-    Epollfd_Connfd epollfd_connfd;
+    EpollfdConnfd epollfd_connfd;
     for (; ;)
     {
         // 不设置超时
@@ -142,7 +153,7 @@ void* thread_func(void* param)
 
     HttpHeader* hh = alloc_http_header();
 
-    Epollfd_Connfd* ptr_epollfd_connfd = (Epollfd_Connfd*)param;
+    EpollfdConnfd* ptr_epollfd_connfd = (EpollfdConnfd*)param;
 
     // 获取客户链接的socket
     int connfd = ptr_epollfd_connfd->connfd;
@@ -154,21 +165,275 @@ void* thread_func(void* param)
     my_epoll_ctl(epollfd, EPOLL_CTL_ADD, ev.data.fd, &ev);
     int nfds = 0;
 
-    // 设置http请求包大小
-    const int ONEKILO = 1024;
-    constexpr int ONEMEGA = 1024 * ONEKILO;
-    constexpr int ONEGIGA = 1024 * ONEMEGA;
-    char* buff = (char*)my_malloc(ONEMEGA);
-    bzero(buff, ONEMEGA);
-
     // 关闭nagle
     set_off_tcp_nagle(connfd);
     // 设置接收超时时间为60秒
     set_recv_timeo(connfd, 60, 0);
     // 设置发送时间为120秒
-    // set_send_timeo(connfd, 120, 0);
+    set_send_timeo(connfd, 120, 0);
 
-//TODO
+    // 处理http请求
+    thread_func_aux(hh, ptr_epollfd_connfd);
 
+    nfds = my_epoll_wait(epollfd, events, 2, TIMEOUT);
+    if (nfds == 0)
+    {
+        clear(connfd, hh);
+        return NULL;
+    }
+    for (int i = 0; i< nfds; ++i)
+    {
+        if (events[i].data.fd == connfd)
+            thread_func_aux(hh, ptr_epollfd_connfd);
+        else
+        {
+            clear(connfd, hh);
+            return NULL;
+        }
+    }
+}
 
+//  thread_func辅助处理函数
+void* thread_func_aux(HttpHeader* hh, EpollfdConnfd* ptr_epollfd_connfd)
+{
+    int connfd = ptr_epollfd_connfd->connfd;
+    int32_t nread = 0, n = 0;
+    char* buff = (char*)my_malloc(ONEMEGA);
+    bzero(buff, ONEMEGA);
+
+    for ( ; ;)
+    {
+        if ((n = read(connfd, buff + nread, ONEMEGA - 1)) > 0)
+            nread += n;
+        else if (n = 0)
+            break;
+        else if (n == -1 && errno == EINTR)
+            continue;
+        else if (n == -1 && errno == EAGAIN)
+            break;
+        else if (n == -1 && errno == EWOULDBLOCK)
+        {
+            perror("socket read timeout");
+            clear(connfd, hh);
+            return NULL;
+        }
+        else
+        {
+            perror("read http request error");
+            my_free(buff);
+            break;
+        }
+    }
+
+    if (nread != 0)
+    {
+        string str_http_request(buff, buff + nread);
+
+        if (!parse_http_request(str_http_request, hh))
+        {
+            perror("parse_http_request failed");
+            clear(connfd, hh);
+            return NULL;
+        }
+
+        string out;
+        int http_codes = do_http_header(hh, out);
+
+        char* out_buf = (char*)my_malloc(out.size());
+        if (out_buf == NULL)
+        {
+            clear(connfd, hh);
+            return NULL;
+        }
+        
+        int i;
+        for (i = 0; i != out.size(); ++i)
+            out_buf[i] = out[i];
+        out_buf[i] = '\0';
+        int nwrite = 0;
+        n = 0;
+        if (http_codes == BAD_REQUEST ||http_codes == NOT_IMPLEMENTED ||
+                http_codes ==  NOT_FOUND ||
+                (http_codes == OK && hh->method == "HEAD"))
+        {
+            while ((n = write(connfd, out_buf + nwrite, i)) != 0)
+            {
+                if (n == -1)
+                {
+                    if (errno == EINTR)
+                        continue;
+                    else
+                    {
+                        clear(connfd, hh);
+                        return NULL;
+                    }
+                }
+                nwrite += n;
+            }
+        } 
+        if (http_codes == OK)
+        {
+            if (hh->method == "GET")
+            {
+                while ((n = write(connfd, out_buf + nwrite, i)) != 0)
+                {
+                    if (n == -1)
+                    {
+                        if (errno == EINTR)
+                            continue;
+                        else
+                        {
+                            clear(connfd, hh);
+                            return NULL;
+                        }
+                    }
+                    nwrite += n;
+                }
+                string real_url = get_real_url(hh->url);
+                int fd = open(real_url.c_str(), O_RDONLY);
+                int file_size = get_file_length(real_url.c_str());
+                int nwrite = 0;
+                while (1)
+                {
+                    if ((sendfile(connfd, fd, (off_t*)&nwrite, file_size)) < 0)
+                        perror("sendfile") ;
+                    if (nwrite < file_size)
+                        continue;
+                }
+            }
+            free(out_buf);
+        }
+    }
+}
+
+// 清除函数
+void clear(int connfd, HttpHeader* hh)
+{
+    free_http_header(hh);
+    close(connfd);
+    thread_num_minus1();
+}
+
+// thread_num原子加１
+inline void thread_num_add1()
+{
+    pthread_mutex_lock(&thread_num_mutex);
+    ++thread_num;
+    pthread_mutex_unlock(&thread_num_mutex);
+}
+
+// thread_num原子减１
+inline void thread_num_minus1()
+{
+    pthread_mutex_lock(&thread_num_mutex);
+    --thread_num;
+    pthread_mutex_unlock(&thread_num_mutex);
+}
+
+// thread_num原子读
+int32_t thread_num_read()
+{
+}
+
+// HttpHeader处理函数，根据解析下来的HttpHeader来处理客户的请求
+// result保存了处理结果，即http响应包
+// 返回值：HTTP状态码
+int do_http_header(HttpHeader* hh, string& result)
+{
+	char status_line[256] = {0};
+	string crlf("\r\n");
+	string server("Server: tinyhttp\r\n");
+	string Public("Public: GET, HEAD\r\n");
+	string content_base = "Content-Base: " + domain + crlf;
+	string date = "Date:" + gmt_time() + crlf;
+
+	string content_length("Content-Length: ");
+	string content_location("Content-Location: ");
+	string last_modified("Last-Modified: ");
+	//string body("");
+
+	if(hh == NULL)
+	{
+		snprintf(status_line, sizeof(status_line), "HTTP/1.1 %d %s\r\n", 
+			BAD_REQUEST, get_state_by_codes(BAD_REQUEST));
+		result = status_line + crlf;
+		return BAD_REQUEST;
+	}
+
+	string method = hh->method;
+	string real_url = get_real_url(hh->url);
+	string version = hh->version;
+	if(method == "GET" || method == "HEAD")
+	{
+		if(file_existed(real_url.c_str()) == -1)
+		{
+			snprintf(status_line, sizeof(status_line), "HTTP/1.1 %d %s\r\n", 
+				NOT_FOUND, get_state_by_codes(NOT_FOUND));
+			result += (status_line + server + date + crlf); 
+			return NOT_FOUND;
+		}
+		else
+		{
+			int len = get_file_length(real_url.c_str());
+			snprintf(status_line, sizeof(status_line), "HTTP/1.1 %d %s\r\n", 
+				OK, get_state_by_codes(OK));
+			result += status_line;
+			snprintf(status_line, sizeof(status_line), "%d\r\n", len);
+			result += content_length + status_line;
+			result += server + content_base + date;
+			result += last_modified + get_file_modified_time(real_url.c_str()) + crlf + crlf;
+		}
+	}
+	else if(method == "PUT")
+	{
+		snprintf(status_line, sizeof(status_line), "HTTP/1.1 %d %s\r\n", 
+				NOT_IMPLEMENTED, get_state_by_codes(NOT_IMPLEMENTED));
+		result += status_line + server + Public + date + crlf;
+		return NOT_IMPLEMENTED;
+	}
+	else if(method == "DELETE")
+	{
+		snprintf(status_line, sizeof(status_line), "HTTP/1.1 %d %s\r\n", 
+				NOT_IMPLEMENTED, get_state_by_codes(NOT_IMPLEMENTED));
+		result += status_line + server + Public + date + crlf;
+		return NOT_IMPLEMENTED;
+	}
+	else if(method == "POST")
+	{
+		snprintf(status_line, sizeof(status_line), "HTTP/1.1 %d %s\r\n", 
+				NOT_IMPLEMENTED, get_state_by_codes(NOT_IMPLEMENTED));
+		result += status_line + server + Public + date + crlf;
+		return NOT_IMPLEMENTED;
+	}
+	else
+	{
+		snprintf(status_line, sizeof(status_line), "HTTP/1.1 %d %s\r\n", 
+			BAD_REQUEST, get_state_by_codes(BAD_REQUEST));
+		result = status_line + crlf;
+		return BAD_REQUEST;
+	}
+
+	return OK;
+}
+
+// 通过HTTP状态码返回友好语句
+const char* get_state_by_codes(int http_codes)
+{
+	switch (http_codes)
+	{
+		case OK:
+			return "ok";
+		case BAD_REQUEST:
+			return "badrequest";
+		case FORBIDDEN:
+			return "forbidden";
+		case NOT_FOUND:
+			return "notfound";
+		case NOT_IMPLEMENTED:
+			return "notimplemented";
+		default:
+			break;
+	}
+
+	return NULL;
 }
