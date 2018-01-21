@@ -38,18 +38,18 @@ inline const char* get_state_by_codes(int http_codes);
 //**********web服务器程序入口函数**********
 int main(int argc, char**argv)
 {
-    if (argc != 2)
-    {
-        std::cout << "Usage: " << argv[0] << " <config_path>" << std::endl;
-        exit(-1);
-    }
+    // if (argc != 2)
+    // {
+    //     std::cout << "Usage: " << argv[0] << " <config_path>" << std::endl;
+    //     exit(-1);
+    // }
 
-    // p判断配置文件是否存在
-    if (file_existed(argv[1]) == false)
-    {
-        perror("cannot open config file");
-        exit(-1);
-    }
+    // // p判断配置文件是否存在
+    // if (file_existed(argv[1]) == false)
+    // {
+    //     perror("cannot open config file");
+    //     exit(-1);
+    // }
 
     // 创建监听套接字
     int listen_fd = my_socket(AF_INET, SOCK_STREAM, 0);
@@ -342,7 +342,7 @@ int do_http_header(HttpHeader* hh, string& result)
 {
 	char status_line[256] = {0};
 	string crlf("\r\n");
-	string server("Server: tinyhttp\r\n");
+	string server("Server: Marvin's http\r\n");
 	string Public("Public: GET, HEAD\r\n");
 	string content_base = "Content-Base: " + domain + crlf;
 	string date = "Date:" + gmt_time() + crlf;
@@ -350,12 +350,12 @@ int do_http_header(HttpHeader* hh, string& result)
 	string content_length("Content-Length: ");
 	string content_location("Content-Location: ");
 	string last_modified("Last-Modified: ");
-	//string body("");
+	string body("");
 
 	if(hh == NULL)
 	{
 		snprintf(status_line, sizeof(status_line), "HTTP/1.1 %d %s\r\n", 
-			BAD_REQUEST, get_state_by_codes(BAD_REQUEST));
+			        BAD_REQUEST, get_state_by_codes(BAD_REQUEST));
 		result = status_line + crlf;
 		return BAD_REQUEST;
 	}
@@ -365,7 +365,7 @@ int do_http_header(HttpHeader* hh, string& result)
 	string version = hh->version;
 	if(method == "GET" || method == "HEAD")
 	{
-		if(file_existed(real_url.c_str()) == -1)
+		if(file_existed(real_url.c_str()) == false)
 		{
 			snprintf(status_line, sizeof(status_line), "HTTP/1.1 %d %s\r\n", 
 				NOT_FOUND, get_state_by_codes(NOT_FOUND));
@@ -376,7 +376,7 @@ int do_http_header(HttpHeader* hh, string& result)
 		{
 			int len = get_file_length(real_url.c_str());
 			snprintf(status_line, sizeof(status_line), "HTTP/1.1 %d %s\r\n", 
-				OK, get_state_by_codes(OK));
+				        OK, get_state_by_codes(OK));
 			result += status_line;
 			snprintf(status_line, sizeof(status_line), "%d\r\n", len);
 			result += content_length + status_line;
@@ -387,28 +387,28 @@ int do_http_header(HttpHeader* hh, string& result)
 	else if(method == "PUT")
 	{
 		snprintf(status_line, sizeof(status_line), "HTTP/1.1 %d %s\r\n", 
-				NOT_IMPLEMENTED, get_state_by_codes(NOT_IMPLEMENTED));
+				    NOT_IMPLEMENTED, get_state_by_codes(NOT_IMPLEMENTED));
 		result += status_line + server + Public + date + crlf;
 		return NOT_IMPLEMENTED;
 	}
 	else if(method == "DELETE")
 	{
 		snprintf(status_line, sizeof(status_line), "HTTP/1.1 %d %s\r\n", 
-				NOT_IMPLEMENTED, get_state_by_codes(NOT_IMPLEMENTED));
+				    NOT_IMPLEMENTED, get_state_by_codes(NOT_IMPLEMENTED));
 		result += status_line + server + Public + date + crlf;
 		return NOT_IMPLEMENTED;
 	}
 	else if(method == "POST")
 	{
 		snprintf(status_line, sizeof(status_line), "HTTP/1.1 %d %s\r\n", 
-				NOT_IMPLEMENTED, get_state_by_codes(NOT_IMPLEMENTED));
+				    NOT_IMPLEMENTED, get_state_by_codes(NOT_IMPLEMENTED));
 		result += status_line + server + Public + date + crlf;
 		return NOT_IMPLEMENTED;
 	}
 	else
 	{
 		snprintf(status_line, sizeof(status_line), "HTTP/1.1 %d %s\r\n", 
-			BAD_REQUEST, get_state_by_codes(BAD_REQUEST));
+			        BAD_REQUEST, get_state_by_codes(BAD_REQUEST));
 		result = status_line + crlf;
 		return BAD_REQUEST;
 	}
