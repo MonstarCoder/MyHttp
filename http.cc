@@ -176,7 +176,7 @@ void* thread_func(void* param)
     thread_func_aux(hh, ptr_epollfd_connfd);
 
     nfds = my_epoll_wait(epollfd, events, 2, TIMEOUT);
-    if (nfds == 0)
+    if (nfds == 0) // 超时
     {
         clear(connfd, hh);
         return NULL;
@@ -217,12 +217,12 @@ void* thread_func_aux(HttpHeader* hh, EpollfdConnfd* ptr_epollfd_connfd)
             clear(connfd, hh);
             return NULL;
         }
-        else
-        {
-            perror("read http request error");
-            my_free(buff);
-            break;
-        }
+        // else
+        // {
+        //     perror("read http request error");
+        //     my_free(buff);
+        //     break;
+        // }
     }
 
     if (nread != 0)
