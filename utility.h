@@ -33,10 +33,15 @@ extern string docroot;
 string gmt_time();
 
 // 根据http请求中的url和配置文件中的docroot配置选项构造真正的url
-string real_url(const string& url);
+string get_real_url(const string& url);
 
 // 检查文件是否存在
-inline bool file_existed(const char* path);
+inline bool file_existed(const char* path)
+{
+    int ret = open(path, O_RDONLY | O_EXCL);
+    close(ret);
+    return ret;
+}
 
 // 获取文件长度
 int get_file_length(const char* path);
