@@ -26,11 +26,11 @@
 
 using std::string;
 
-typedef struct EpollfdConnfd
+struct EpollfdConnfd
 {
     int epollfd;
     int connfd;
-} Epollfd_Connfd;
+}; 
 
 //**********常量定义**********
 #define MAX_EVENTS  1024 // epoll最大监听事件数
@@ -41,13 +41,13 @@ string domain("");
 string docroot("");
 
 //**********MIME定义**********
-typedef struct MimeNode
+struct MimeNode
 {
     const char* type;
     const char* value;
-} mime_node;
+};
 
-mime_node mime[] =
+MimeNode mime[] =
 {
 	{".html", "text/html"},
 	{".xml", "text/xml"},
@@ -71,7 +71,7 @@ mime_node mime[] =
 
 // 将MIME的type转换为相应的value
 // 返回NULL表示type在MIME中不存在
-inline const char* mime_type2value(const char* type)
+const char* mime_type2value(const char* type)
 {
     for (int i = 0; mime[i].type != NULL; ++i)
     {
