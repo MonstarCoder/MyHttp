@@ -175,22 +175,22 @@ void* thread_func(void* param)
     // 处理http请求
     thread_func_aux(hh, ptr_epollfd_connfd);
 
-    nfds = my_epoll_wait(epollfd, events, 2, TIMEOUT);
-    if (nfds == 0) // 超时
-    {
-        clear(connfd, hh);
-        return NULL;
-    }
-    for (int i = 0; i< nfds; ++i)
-    {
-        if (events[i].data.fd == connfd)
-            thread_func_aux(hh, ptr_epollfd_connfd);
-        else
-        {
-            clear(connfd, hh);
-            return NULL;
-        }
-    }
+    // nfds = my_epoll_wait(epollfd, events, 2, TIMEOUT);
+    // if (nfds == 0) // 超时
+    // {
+    //     clear(connfd, hh);
+    //     return NULL;
+    // }
+    // for (int i = 0; i< nfds; ++i)
+    // {
+    //     if (events[i].data.fd == connfd)
+    //         thread_func_aux(hh, ptr_epollfd_connfd);
+    //     else
+    //     {
+    //         clear(connfd, hh);
+    //         return NULL;
+    //     }
+    // }
 }
 
 //  thread_func辅助处理函数
@@ -198,8 +198,8 @@ void* thread_func_aux(HttpHeader* hh, EpollfdConnfd* ptr_epollfd_connfd)
 {
     int connfd = ptr_epollfd_connfd->connfd;
     int32_t nread = 0, n = 0;
-    char* buff = (char*)my_malloc(1024);
-    bzero(buff, 1024);
+    char* buff = (char*)my_malloc(ONEMEGA);
+    bzero(buff, ONEMEGA);
 
     for ( ; ;)
     {
@@ -219,7 +219,6 @@ void* thread_func_aux(HttpHeader* hh, EpollfdConnfd* ptr_epollfd_connfd)
         }
         else
         {
-            printf("!!!!!!\n");
             perror("read http request error");
             my_free(buff);
             break;
