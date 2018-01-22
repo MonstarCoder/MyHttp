@@ -198,14 +198,14 @@ void* thread_func_aux(HttpHeader* hh, EpollfdConnfd* ptr_epollfd_connfd)
 {
     int connfd = ptr_epollfd_connfd->connfd;
     int32_t nread = 0, n = 0;
-    char* buff = (char*)my_malloc(ONEMEGA);
-    bzero(buff, ONEMEGA);
+    char* buff = (char*)my_malloc(1024);
+    bzero(buff, 1024);
 
     for ( ; ;)
     {
-        if ((n = read(connfd, buff + nread, ONEMEGA - 1)) > 0)
+        if ((n = read(connfd, buff + nread, sizeof(*buff))) > 0)
             nread += n;
-        else if (n = 0)
+        else if (n == 0)
             break;
         else if (n == -1 && errno == EINTR)
             continue;
@@ -217,12 +217,13 @@ void* thread_func_aux(HttpHeader* hh, EpollfdConnfd* ptr_epollfd_connfd)
             clear(connfd, hh);
             return NULL;
         }
-        // else
-        // {
-        //     perror("read http request error");
-        //     my_free(buff);
-        //     break;
-        // }
+        else
+        {
+            printf("!!!!!!\n");
+            perror("read http request error");
+            my_free(buff);
+            break;
+        }
     }
 
     if (nread != 0)
@@ -291,10 +292,12 @@ void* thread_func_aux(HttpHeader* hh, EpollfdConnfd* ptr_epollfd_connfd)
                 }
                 string real_url = get_real_url(hh->url);
                 int fd = open(real_url.c_str(), O_RDONLY);
+                // c_str()返回c风格字符串
                 int file_size = get_file_length(real_url.c_str());
                 int nwrite = 0;
                 while (1)
                 {
+                    // 使用sendfile减少数据拷贝次数
                     if ((sendfile(connfd, fd, (off_t*)&nwrite, file_size)) < 0)
                         perror("sendfile") ;
                     if (nwrite < file_size)
@@ -345,7 +348,7 @@ int do_http_header(HttpHeader* hh, string& result)
 	string server("Server: Marvin's http\r\n");
 	string Public("Public: GET, HEAD\r\n");
 	string content_base = "Content-Base: " + domain + crlf;
-	string date = "Date:" + gmt_time() + crlf;
+	string date = "Date: " + gmt_time() + crlf;
 
 	string content_length("Content-Length: ");
 	string content_location("Content-Location: ");
