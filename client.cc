@@ -38,7 +38,7 @@ int main(int argc, char** argv)
     }
 
 	char http_request[] =
-"GET /root/MyHttp/Google.html HTTP1.1\r\n\
+"GET /root/MyHttp/index.html HTTP1.1\r\n\
 Lengh: 8080\r\n\
 Date: Fri Mon 2018\r\n\
 \r\n\
@@ -52,12 +52,12 @@ sb\n\
         perror("write error");
         exit(-1);
     }
-    printf("write success");
+    printf("write success\n");
     if (read(sockfd, &buf, sizeof(buf)) < 0)
     {
         perror("read error");
     }
-    printf("read from server:%s", buf);
+    printf("read from server:\n%s", buf);
     close(sockfd);
     exit(0);
 }
