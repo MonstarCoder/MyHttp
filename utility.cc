@@ -424,7 +424,7 @@ void *my_calloc(size_t nmemb, size_t size)
 void *my_malloc(size_t size)
 {
 	void *ptr = malloc(size);
-	if(NULL == ptr)
+	if(ptr == NULL)
 	{
 		perror("my_malloc");
 		exit(-1);
