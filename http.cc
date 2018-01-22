@@ -175,6 +175,8 @@ void* thread_func(void* param)
     // 处理http请求
     thread_func_aux(hh, ptr_epollfd_connfd);
 
+    my_free(hh);
+
     // nfds = my_epoll_wait(epollfd, events, 2, TIMEOUT);
     // if (nfds == 0) // 超时
     // {
