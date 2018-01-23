@@ -273,6 +273,7 @@ void* thread_func_aux(HttpHeader* hh, EpollfdConnfd* ptr_epollfd_connfd)
                     else
                     {
                         clear(connfd, hh);
+                        my_free(out_buf);
                         return NULL;
                     }
                 }
@@ -292,6 +293,7 @@ void* thread_func_aux(HttpHeader* hh, EpollfdConnfd* ptr_epollfd_connfd)
                         else
                         {
                             clear(connfd, hh);
+                            my_free(out_buf);
                             return NULL;
                         }
                     }
@@ -302,20 +304,36 @@ void* thread_func_aux(HttpHeader* hh, EpollfdConnfd* ptr_epollfd_connfd)
                 // c_str()返回c风格字符串
                 int file_size = get_file_length(real_url.c_str());
                 int nwrite = 0;
-                while (1)
+                while ((n = sendfile(connfd, fd, (off_t*)&nwrite, file_size)) != 0)
                 {
-                    // 使用sendfile减少数据拷贝次数
-                    if ((sendfile(connfd, fd, (off_t*)&nwrite, file_size)) < 0)
+                    if (n == -1)
                     {
-                        close(fd);
-                        perror("sendfile") ;
+                        if (errno == EINTR || errno == EAGAIN)
+                            continue;
+                        else
+                        {
+                            clear(connfd, hh);
+                            my_free(out_buf);
+                            close(fd);
+                            return NULL;
+                        }
                     }
-                    if (nwrite < file_size)
-                        continue;
+                    nwrite += n;
                 }
+                // while (1)
+                // {
+                //     // 使用sendfile减少数据拷贝次数
+                //     if ((sendfile(connfd, fd, (off_t*)&nwrite, file_size)) < 0)
+                //     {
+                //         close(fd);
+                //         perror("sendfile") ;
+                //     }
+                //     if (nwrite < file_size)
+                //         continue;
+                // }
                 close(fd);
             }
-            free(out_buf);
+            my_free(out_buf);
         }
     }
     clear(connfd, hh);
