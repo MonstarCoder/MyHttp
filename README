@@ -1,1 +1,1 @@
-一个简易的http server, 使用epoll和多线程技术，支持GET和POST．
+一个简易的http server, 使用epoll和线程池，目前仅支持GET和HEAD请求方式．
