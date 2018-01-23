@@ -36,7 +36,7 @@ int do_http_header(HttpHeader* hh, string& result);
 inline const char* get_state_by_codes(int http_codes);
 
 //**********web服务器程序入口函数**********
-int main(int argc, char**argv)
+int main(int argc, char** argv)
 {
     // if (argc != 2)
     // {
@@ -68,11 +68,11 @@ int main(int argc, char**argv)
     struct sockaddr_in client_addr;
 
     // 设定套接字地址
-    bzero(&server_addr, sizeof(server_addr)); 
+    bzero(&server_addr, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
     server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
     server_addr.sin_port = listen_port;
-    
+
     my_bind(listen_fd, (struct sockaddr*)&server_addr, sizeof(server_addr));
     my_listen(listen_fd, MAX_BACKLOG);
 
@@ -147,7 +147,7 @@ int main(int argc, char**argv)
 
     // 关闭监听套接字
     close(listen_fd);
-    
+
     return 0;
 }
 
@@ -221,6 +221,7 @@ void* thread_func_aux(HttpHeader* hh, EpollfdConnfd* ptr_epollfd_connfd)
         {
             perror("socket read timeout");
             clear(connfd, hh);
+            my_free(buff);
             return NULL;
         }
         else
@@ -234,6 +235,7 @@ void* thread_func_aux(HttpHeader* hh, EpollfdConnfd* ptr_epollfd_connfd)
     if (nread != 0)
     {
         string str_http_request(buff, buff + nread);
+        my_free(buff);
 
         if (!parse_http_request(str_http_request, hh))
         {
@@ -251,7 +253,7 @@ void* thread_func_aux(HttpHeader* hh, EpollfdConnfd* ptr_epollfd_connfd)
             clear(connfd, hh);
             return NULL;
         }
-        
+
         int i;
         for (i = 0; i != out.size(); ++i)
             out_buf[i] = out[i];
@@ -276,7 +278,7 @@ void* thread_func_aux(HttpHeader* hh, EpollfdConnfd* ptr_epollfd_connfd)
                 }
                 nwrite += n;
             }
-        } 
+        }
         if (http_codes == OK)
         {
             if (hh->method == "GET")
@@ -363,7 +365,7 @@ int do_http_header(HttpHeader* hh, string& result)
 
 	if(hh == NULL)
 	{
-		snprintf(status_line, sizeof(status_line), "HTTP/1.1 %d %s\r\n", 
+		snprintf(status_line, sizeof(status_line), "HTTP/1.1 %d %s\r\n",
 			        BAD_REQUEST, get_state_by_codes(BAD_REQUEST));
 		result = status_line + crlf;
 		return BAD_REQUEST;
@@ -374,17 +376,17 @@ int do_http_header(HttpHeader* hh, string& result)
 	string version = hh->version;
 	if(method == "GET" || method == "HEAD")
 	{
-		if(file_existed(real_url.c_str()) == false)
+		if(file_existed(real_url.c_str()) == -1)
 		{
-			snprintf(status_line, sizeof(status_line), "HTTP/1.1 %d %s\r\n", 
+			snprintf(status_line, sizeof(status_line), "HTTP/1.1 %d %s\r\n",
 				NOT_FOUND, get_state_by_codes(NOT_FOUND));
-			result += (status_line + server + date + crlf); 
+			result += (status_line + server + date + crlf);
 			return NOT_FOUND;
 		}
 		else
 		{
 			int len = get_file_length(real_url.c_str());
-			snprintf(status_line, sizeof(status_line), "HTTP/1.1 %d %s\r\n", 
+			snprintf(status_line, sizeof(status_line), "HTTP/1.1 %d %s\r\n",
 				        OK, get_state_by_codes(OK));
 			result += status_line;
 			snprintf(status_line, sizeof(status_line), "%d\r\n", len);
@@ -395,28 +397,28 @@ int do_http_header(HttpHeader* hh, string& result)
 	}
 	else if(method == "PUT")
 	{
-		snprintf(status_line, sizeof(status_line), "HTTP/1.1 %d %s\r\n", 
+		snprintf(status_line, sizeof(status_line), "HTTP/1.1 %d %s\r\n",
 				    NOT_IMPLEMENTED, get_state_by_codes(NOT_IMPLEMENTED));
 		result += status_line + server + Public + date + crlf;
 		return NOT_IMPLEMENTED;
 	}
 	else if(method == "DELETE")
 	{
-		snprintf(status_line, sizeof(status_line), "HTTP/1.1 %d %s\r\n", 
+		snprintf(status_line, sizeof(status_line), "HTTP/1.1 %d %s\r\n",
 				    NOT_IMPLEMENTED, get_state_by_codes(NOT_IMPLEMENTED));
 		result += status_line + server + Public + date + crlf;
 		return NOT_IMPLEMENTED;
 	}
 	else if(method == "POST")
 	{
-		snprintf(status_line, sizeof(status_line), "HTTP/1.1 %d %s\r\n", 
+		snprintf(status_line, sizeof(status_line), "HTTP/1.1 %d %s\r\n",
 				    NOT_IMPLEMENTED, get_state_by_codes(NOT_IMPLEMENTED));
 		result += status_line + server + Public + date + crlf;
 		return NOT_IMPLEMENTED;
 	}
 	else
 	{
-		snprintf(status_line, sizeof(status_line), "HTTP/1.1 %d %s\r\n", 
+		snprintf(status_line, sizeof(status_line), "HTTP/1.1 %d %s\r\n",
 			        BAD_REQUEST, get_state_by_codes(BAD_REQUEST));
 		result = status_line + crlf;
 		return BAD_REQUEST;
