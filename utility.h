@@ -36,7 +36,7 @@ string gmt_time();
 string get_real_url(const string& url);
 
 // 检查文件是否存在
-inline bool file_existed(const char* path)
+inline int file_existed(const char* path)
 {
     int ret = open(path, O_RDONLY | O_EXCL);
     close(ret);
