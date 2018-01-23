@@ -306,10 +306,14 @@ void* thread_func_aux(HttpHeader* hh, EpollfdConnfd* ptr_epollfd_connfd)
                 {
                     // 使用sendfile减少数据拷贝次数
                     if ((sendfile(connfd, fd, (off_t*)&nwrite, file_size)) < 0)
+                    {
+                        close(fd);
                         perror("sendfile") ;
+                    }
                     if (nwrite < file_size)
                         continue;
                 }
+                close(fd);
             }
             free(out_buf);
         }
