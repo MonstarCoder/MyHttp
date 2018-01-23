@@ -27,11 +27,15 @@ int main(int argc, char** argv)
 
     for (int i = 0; i < 1024; ++i) 
     {
-        pthread_t tid;
-        // pthread_create(&tid, &pthread_attr_detach, &thread_func, (void*)argv[1]);
-        // pthread_create(&tid, NULL, &thread_func, (void*)argv[1]);
-        thread_func((void*)argv[1]);
-        printf("NO.%d is running\n", i);
+        for (int j = 0; j < 100; ++j)
+        {
+            pthread_t tid;
+            // pthread_create(&tid, &pthread_attr_detach, &thread_func, (void*)argv[1]);
+            // pthread_create(&tid, NULL, &thread_func, (void*)argv[1]);
+            printf("NO.%d is running\n", 1024 * i + j);
+            thread_func((void*)argv[1]);
+        }
+        // sleep(2);
     }
 
     return 0;
@@ -62,7 +66,8 @@ void* thread_func(void* args)
     }
 
 	char http_request[] =
-"GET /home/marvin/MyHttp/index.html HTTP1.1\r\n\
+/*"GET /home/marvin/MyHttp/index.html HTTP2.1\r\n\*/
+"GET /root/MyHttp/index.html HTTP1.1\r\n\
 Lengh: 8080\r\n\
 Date: Fri Mon 2018\r\n\
 \r\n\
@@ -70,18 +75,23 @@ Date: Fri Mon 2018\r\n\
 sb\n\
 </html>"
     ;
-    char buf[1024];
+
     if (write(sockfd, &http_request, sizeof(http_request)) < 0)
     {
         perror("write error");
         exit(-1);
     }
     printf("write success\n");
-    if (read(sockfd, &buf, sizeof(buf)) < 0)
+    char *read_buff = new char[10240];
+    int in = 0, nread = 0;
+    while((in = read(sockfd, read_buff + nread, sizeof(read_buff))) > 0)
     {
-        perror("read error");
+        nread += in;
+        if (nread > 10000)
+            break;
     }
-    printf("read from server:\n%s", buf);
+    printf("read from server:\n%s", read_buff);
+    delete[] read_buff;
     close(sockfd);
     return NULL;
 }
