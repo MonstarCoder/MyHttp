@@ -87,9 +87,12 @@ int main(int argc, char**argv)
     my_epoll_ctl(epollfd, EPOLL_CTL_ADD, listen_fd, &ev);
 
     // 设置线程属性为detach
-    pthread_attr_t pthread_attr_detach;
-    pthread_attr_init(&pthread_attr_detach);
-    pthread_attr_setdetachstate(&pthread_attr_detach, PTHREAD_CREATE_DETACHED);
+    // pthread_attr_t pthread_attr_detach;
+    // pthread_attr_init(&pthread_attr_detach);
+    // pthread_attr_setdetachstate(&pthread_attr_detach, PTHREAD_CREATE_DETACHED);
+
+    // 创建线程池
+    Threads thread_pool(100);
 
     int connfd;
     int nfds;
@@ -132,12 +135,15 @@ int main(int argc, char**argv)
                 // epoll不再监听这个客户端套接字
                 my_epoll_ctl(epollfd, EPOLL_CTL_DEL, connfd, &ev);
                 // 处理链接
-                pthread_create(&tid, &pthread_attr_detach, &thread_func, (void*)&epollfd_connfd);
+                // pthread_create(&tid, &pthread_attr_detach, &thread_func, (void*)&epollfd_connfd);
+
+                // 交给线程池中的一个线程
+                thread_pool.add_task(&thread_func, (void*)&epollfd_connfd);
             }
         }
     }
     // 清理工作
-    pthread_attr_destroy(&pthread_attr_detach);
+    // pthread_attr_destroy(&pthread_attr_detach);
 
     // 关闭监听套接字
     close(listen_fd);

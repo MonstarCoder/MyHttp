@@ -3,6 +3,7 @@
 
 #include "utility.h"
 #include "parse.h"
+#include "threads.h"
 
 #include <sys/socket.h>
 #include <sys/types.h>
