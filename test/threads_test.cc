@@ -10,9 +10,6 @@ void* thread_test(void* args)
 int main()
 {
     Threads thread(10);
-    Job job;
-    job.callback_func = thread_test;
-    job.args = NULL;
     thread.add_task(thread_test, NULL);
 
     return 0;
