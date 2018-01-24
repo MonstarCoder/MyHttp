@@ -18,9 +18,6 @@ inline void thread_num_add1();
 // thread_num原子减１
 inline void thread_num_minus1();
 
-// thread_num原子读
-int32_t thread_num_read();
-
 // thread_func辅助处理函数
 void* thread_func_aux(HttpHeader* hh, EpollfdConnfd* ptr_epollfd_connfd);
 
@@ -157,6 +154,10 @@ void* thread_func(void* param)
 {
     thread_num_add1();
 
+    pthread_mutex_lock(&thread_num_mutex);
+    printf("process NO. %d is running \n", thread_num);
+    pthread_mutex_unlock(&thread_num_mutex);
+
     HttpHeader* hh = alloc_http_header();
 
     EpollfdConnfd* ptr_epollfd_connfd = (EpollfdConnfd*)param;
@@ -164,12 +165,12 @@ void* thread_func(void* param)
     // 获取客户链接的socket
     int connfd = ptr_epollfd_connfd->connfd;
 
-    struct epoll_event ev, events[2];
-    ev.events = EPOLLIN | EPOLLET;
-    ev.data.fd = connfd;
-    int epollfd = my_epoll_create(2);
-    my_epoll_ctl(epollfd, EPOLL_CTL_ADD, ev.data.fd, &ev);
-    int nfds = 0;
+    // struct epoll_event ev, events[2];
+    // ev.events = EPOLLIN | EPOLLET;
+    // ev.data.fd = connfd;
+    // int epollfd = my_epoll_create(2);
+    // my_epoll_ctl(epollfd, EPOLL_CTL_ADD, ev.data.fd, &ev);
+    // int nfds = 0;
 
     // 关闭nagle
     set_off_tcp_nagle(connfd);
@@ -361,11 +362,6 @@ inline void thread_num_minus1()
     pthread_mutex_lock(&thread_num_mutex);
     --thread_num;
     pthread_mutex_unlock(&thread_num_mutex);
-}
-
-// thread_num原子读
-int32_t thread_num_read()
-{
 }
 
 // HttpHeader处理函数，根据解析下来的HttpHeader来处理客户的请求
