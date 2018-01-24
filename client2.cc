@@ -10,6 +10,7 @@
 #include <netdb.h>
 #include <string.h>
 #include <pthread.h>
+#include <sys/wait.h>
 
 void* thread_func(void* args);
 
@@ -25,18 +26,25 @@ int main(int argc, char** argv)
     // pthread_attr_init(&pthread_attr_detach);
     // pthread_attr_setdetachstate(&pthread_attr_detach, PTHREAD_CREATE_DETACHED);
 
-    for (int i = 0; i < 1024; ++i) 
+    pid_t pid;
+    for (int i = 0; i < 5; ++i)
     {
-        for (int j = 0; j < 100; ++j)
+        // 创建子进程
+        if ((pid = fork()) == 0)
         {
-            pthread_t tid;
-            // pthread_create(&tid, &pthread_attr_detach, &thread_func, (void*)argv[1]);
-            // pthread_create(&tid, NULL, &thread_func, (void*)argv[1]);
-            printf("NO.%d is running\n", 1024 * i + j);
-            thread_func((void*)argv[1]);
+            // 每个子进程100次链接
+            for (int j = 0; j < 1000; ++j)
+            {
+                // pthread_t tid;
+                // pthread_create(&tid, &pthread_attr_detach, &thread_func, (void*)argv[1]);
+                // pthread_create(&tid, NULL, &thread_func, (void*)argv[1]);
+                printf("NO. %d of process %d is running\n", j, getpid());
+                thread_func((void*)argv[1]);
+            }
         }
-        // sleep(2);
     }
+    while (wait(NULL) > 0)
+        ;
 
     return 0;
 
@@ -66,7 +74,7 @@ void* thread_func(void* args)
     }
 
 	char http_request[] =
-/*"GET /home/marvin/MyHttp/index.html HTTP2.1\r\n\*/
+/*"GET /home/marvin/MyHttp/index.html HTTP1.1\r\n\*/
 "GET /root/MyHttp/index.html HTTP1.1\r\n\
 Lengh: 8080\r\n\
 Date: Fri Mon 2018\r\n\
